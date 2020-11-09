@@ -1,1 +1,1 @@
-# Smart_Campush
+# Smart_Campus
