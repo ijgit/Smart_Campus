@@ -1,0 +1,124 @@
+<!DOCTYPE html>
+<html>
+<head>
+<style>
+
+</style>
+</head>
+
+<body>
+    <div>
+        <input type="text" placeholder="create after" id="cra">
+        <input type="text" placeholder="create before" id="crb">
+        <button type="submit" onclick = 'input()'>Submit</button>
+    </div>
+</body>
+
+
+<script src="https://code.jquery.com/jquery.min.js"></script>
+<script type = "text/javascript">
+    /*** Copyright 2013 Teun Duynstee Licensed under the Apache License, Version 2.0 ***/
+    !function(n,t){"function"==typeof define&&define.amd?define([],t):"object"==typeof exports?module.exports=t():n.firstBy=t()}(this,function(){var n=function(){function n(n){return n}function t(n){return"string"==typeof n?n.toLowerCase():n}function r(r,e){if(e="number"==typeof e?{direction:e}:e||{},"function"!=typeof r){var i=r;r=function(n){return n[i]?n[i]:""}}if(1===r.length){var o=r,f=e.ignoreCase?t:n,u=e.cmp||function(n,t){return n<t?-1:n>t?1:0};r=function(n,t){return u(f(o(n)),f(o(t)))}}return e.direction===-1?function(n,t){return-r(n,t)}:r}function e(n,t){var i="function"==typeof this&&!this.firstBy&&this,o=r(n,t),f=i?function(n,t){return i(n,t)||o(n,t)}:o;return f.thenBy=e,f}return e.firstBy=e,e}();return n});
+
+    function input(){
+        var data = Array();
+        var csv_data = new String();
+
+        //var cnt = document.getElementById("cnt").value;
+        var crb = document.getElementById("crb").value;
+        var cra = document.getElementById("cra").value;
+
+        var filename = cra + '_' + crb + '.csv';
+
+        for (var cnt = 1; cnt < 15+1; cnt++){
+            
+            var url = "http://203.253.128.161:7579/Mobius/ubicomp_lora/" + cnt + '?rcn=4&' + 'cra=' + cra + '&crb='+crb + '&ty=4';
+
+            var settings = {
+                "async": false,
+                "crossDomain": true,
+                "url": url,
+                "method": "GET",
+                "headers": {
+                    "Accept": "application/json",
+                    "X-M2M-RI": "12345",
+                    "X-M2M-Origin": "SOrigin",
+                }
+            }
+        
+            $.ajax(settings).done(function (response) {
+                var localTimeString = new Array();
+                var csvData = new String();
+                
+                var json_obj = response["m2m:rsp"];
+                var arr = Array(json_obj['m2m:cin'].length).fill(null).map(() => Array(17));//.fill(NaN));
+                // console.log(arr);
+
+                for(i in json_obj['m2m:cin']){
+                    
+                    c_split = json_obj['m2m:cin'][i].con.split(',');
+                    for(var cs_idx = 0, j = 0; cs_idx < c_split.length; cs_idx++){
+                        if(typeof c_split[cs_idx] == 'undefined' || c_split[cs_idx] == null || c_split[cs_idx] == ""){
+                            if(cs_idx == 8){
+                                for(var k = 0; k<3; k++)
+                                    arr[i][j++] = NaN;
+                            }
+                        }
+                        else{
+                            if(cs_idx == 3){
+                                var day = c_split[cs_idx].split('/');
+                                for(var k = 0; k<3; k++)
+                                    arr[i][j++] = Number(day[k]);
+                            }
+                            else if(cs_idx == 4){
+                                var time = c_split[cs_idx].split(':');
+                                for(var k = 0; k<3; k++)
+                                    arr[i][j++] = Number(time[k]);
+                            }
+                            else
+                                arr[i][j++] = c_split[cs_idx];
+                        }
+                    }
+                    // console.log(arr[i]);
+                }
+                arr.sort(
+                    firstBy(function (v1, v2) { return v1[4] - v2[4]; })
+                    .thenBy(function (v1, v2) { return v1[5] - v2[5]; })
+                    .thenBy(function (v1, v2) { return v1[6] - v2[6]; })
+                    .thenBy(function (v1, v2) { return v1[7] - v2[7]; })
+                );
+                data.splice(i, 0, arr);           
+            });
+        }
+        
+        for (var i = 0; i<15; i++){
+            for (var j = 0; j<data[i].length; j++){
+
+                csv_data += data[i][j][0] + ',' + data[i][j][1] + ',' + data[i][j][2] + ','+ data[i][j][3] + '/' + data[i][j][4] + '/' + data[i][j][5] 
+                            + ',' + data[i][j][6] + ':' + data[i][j][7] + ':' + data[i][j][8] + ',' + data[i][j][9] + ',' + data[i][j][10] + ',' + data[i][j][11] + ',' + data[i][j][12] + ',' + data[i][j][13] + ',' + data[i][j][14] + ',' + data[i][j][15] + ',' + data[i][j][16] + '\n';
+
+                if(j != data[i].length-1){
+                    var date1 = new Date(data[i][j][3], data[i][j][4]-1, data[i][j][5], data[i][j][6], data[i][j][7], data[i][j][8]);
+                    var date2 = new Date(data[i][j+1][3], data[i][j+1][4]-1, data[i][j+1][5], data[i][j+1][6], data[i][j+1][7], data[i][j+1][8]);
+
+                    var date_dif = date2.getTime() - date1.getTime();
+                    var num_dif = parseInt(date_dif/1000/60/30) - 1;
+        
+                    if(num_dif != 0){
+                        for(var k = 0; k<num_dif; k++)
+                            csv_data += 'NaN' + '\n';
+                    }
+                }
+            }
+        }
+        var encoded_uri = encodeURI(csv_data);
+        var link = document.createElement('a');
+        link.setAttribute("href", "data:text/csv;charset=utf-8,\uFEFF" + encoded_uri);
+        link.setAttribute("download", filename);
+        link.click();
+    }
+
+
+</script>
+
+</html>
